@@ -70,8 +70,8 @@ class SubtitlePreferencesViewModel(
 
             is SubtitlePreferencesUiEvent.ResetSubtitlePosition -> resetSubtitlePosition()
 
-            is SubtitlePreferencesUiEvent.ToggleShowSubtitleAfterRewind ->
-                toggleShowSubtitleAfterRewind()
+            is SubtitlePreferencesUiEvent.ToggleShowOnSkipBack ->
+                toggleShowOnSkipBack()
         }
     }
 
@@ -143,9 +143,9 @@ class SubtitlePreferencesViewModel(
         }
     }
 
-    private fun toggleShowSubtitleAfterRewind() {
+    private fun toggleShowOnSkipBack() {
         viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences { it.copy(showSubtitleAfterRewind = !it.showSubtitleAfterRewind) }
+            preferencesRepository.updatePlayerPreferences { it.copy(showOnSkipBack = !it.showOnSkipBack) }
         }
     }
 }
@@ -175,5 +175,5 @@ sealed interface SubtitlePreferencesUiEvent {
     data class UpdateSubtitleEncoding(val value: String) : SubtitlePreferencesUiEvent
     data object ToggleUseSystemCaptionStyle : SubtitlePreferencesUiEvent
     data object ResetSubtitlePosition : SubtitlePreferencesUiEvent
-    data object ToggleShowSubtitleAfterRewind : SubtitlePreferencesUiEvent
+    data object ToggleShowOnSkipBack : SubtitlePreferencesUiEvent
 }

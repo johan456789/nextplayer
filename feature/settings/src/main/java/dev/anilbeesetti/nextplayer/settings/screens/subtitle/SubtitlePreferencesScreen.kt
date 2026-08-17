@@ -144,17 +144,22 @@ private fun SubtitlePreferencesScreenContent(
                             ),
                         )
                     },
+                    isLastItem = true,
                 )
-                if (state.preferences.preferredSubtitleLanguage.isNotEmpty()) {
-                    PreferenceSwitch(
-                        title = stringResource(id = R.string.show_subtitle_after_rewind),
-                        description = stringResource(id = R.string.show_subtitle_after_rewind_description),
-                        icon = NextIcons.Replay,
-                        isChecked = state.preferences.showSubtitleAfterRewind,
-                        onClick = { onAction(SubtitlePreferencesUiEvent.ToggleShowSubtitleAfterRewind) },
-                        isLastItem = true,
-                    )
-                }
+            }
+            ListSectionTitle(text = stringResource(id = R.string.automatic_subtitles))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            ) {
+                PreferenceSwitch(
+                    title = stringResource(id = R.string.show_on_skip_back),
+                    description = stringResource(id = R.string.show_on_skip_back_description),
+                    icon = NextIcons.Replay,
+                    isChecked = state.preferences.showOnSkipBack,
+                    onClick = { onAction(SubtitlePreferencesUiEvent.ToggleShowOnSkipBack) },
+                    isFirstItem = true,
+                    isLastItem = true,
+                )
             }
             ListSectionTitle(text = stringResource(id = R.string.appearance_name))
             Column(
