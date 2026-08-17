@@ -131,6 +131,15 @@ private fun SubtitlePreferencesScreenContent(
                     },
                     isFirstItem = true,
                 )
+                if (uiState.preferences.preferredSubtitleLanguage.isNotEmpty()) {
+                    PreferenceSwitch(
+                        title = stringResource(id = R.string.show_subtitle_after_rewind),
+                        description = stringResource(id = R.string.show_subtitle_after_rewind_description),
+                        icon = NextIcons.Replay,
+                        isChecked = uiState.preferences.showSubtitleAfterRewind,
+                        onClick = { onAction(SubtitlePreferencesUiEvent.ToggleShowSubtitleAfterRewind) },
+                    )
+                }
                 ClickablePreferenceItem(
                     title = stringResource(R.string.subtitle_text_encoding),
                     description = charsetResource.first {

@@ -91,6 +91,8 @@ class PlayerViewModel(
             is PlayerAction.OnVideoZoomEvent -> onVideoZoomEvent(action.event)
 
             is PlayerAction.OnSubtitleOptionEvent -> onSubtitleOptionEvent(action.event)
+
+            is PlayerAction.ToggleShowSubtitleAfterRewind -> toggleShowSubtitleAfterRewind()
         }
     }
 
@@ -189,6 +191,14 @@ class PlayerViewModel(
             )
         }
     }
+
+    private fun toggleShowSubtitleAfterRewind() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(showSubtitleAfterRewind = !it.showSubtitleAfterRewind)
+            }
+        }
+    }
 }
 
 @Stable
@@ -214,4 +224,5 @@ sealed interface PlayerAction {
     data object ToggleTimeDisplay : PlayerAction
     data class OnVideoZoomEvent(val event: VideoZoomEvent) : PlayerAction
     data class OnSubtitleOptionEvent(val event: SubtitleOptionsEvent) : PlayerAction
+    data object ToggleShowSubtitleAfterRewind : PlayerAction
 }

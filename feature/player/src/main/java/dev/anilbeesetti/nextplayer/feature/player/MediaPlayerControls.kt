@@ -196,6 +196,10 @@ internal fun MediaPlayerControls(
                 videoDecoderMode = state.decoderServiceState.videoMode,
                 audioDecoderMode = state.decoderServiceState.audioMode,
                 videoContentScale = videoZoomAndContentScaleState.videoContentScale,
+                showSubtitleAfterRewind = playerPreferences.showSubtitleAfterRewind,
+                onShowSubtitleAfterRewindChange = {
+                    onAction(PlayerAction.ToggleShowSubtitleAfterRewind)
+                },
                 onDismiss = { overlayView = null },
                 onVideoDecoderModeSelected = {
                     onAction(PlayerAction.SetVideoDecoderMode(mode = it))

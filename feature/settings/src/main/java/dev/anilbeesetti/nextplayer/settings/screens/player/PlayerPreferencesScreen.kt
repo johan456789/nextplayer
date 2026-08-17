@@ -244,15 +244,6 @@ private fun PlayerPreferencesScreenContent(
                     isChecked = state.preferences.rememberSelections,
                     onClick = { onAction(PlayerPreferencesUiEvent.ToggleRememberSelections) },
                 )
-                if (uiState.preferences.preferredSubtitleLanguage.isNotEmpty()) {
-                    PreferenceSwitch(
-                        title = stringResource(id = R.string.show_subtitle_after_rewind),
-                        description = stringResource(id = R.string.show_subtitle_after_rewind_description),
-                        icon = NextIcons.Subtitle,
-                        isChecked = uiState.preferences.showSubtitleAfterRewind,
-                        onClick = { onAction(PlayerPreferencesUiEvent.ToggleShowSubtitleAfterRewind) },
-                    )
-                }
                 ClickablePreferenceItem(
                     title = stringResource(id = R.string.player_screen_orientation),
                     description = state.preferences.playerScreenOrientation.name(),
