@@ -265,7 +265,8 @@ class PlayerService : MediaSessionService() {
                 oldMediaItem == newPosition.mediaItem &&
                 newPosition.positionMs < oldPosition.positionMs
             ) {
-                handleSubtitleOnRewind()
+                val rewindDeltaMs = oldPosition.positionMs - newPosition.positionMs
+                handleSubtitleOnRewind(rewindDeltaMs)
             }
 
             when (reason) {
@@ -1098,9 +1099,9 @@ class PlayerService : MediaSessionService() {
 
     private fun Long.validDurationOrNull(): Long? = takeIf { it != C.TIME_UNSET && it >= 0 }
 
-    private fun handleSubtitleOnRewind() {
+    private fun handleSubtitleOnRewind(rewindDeltaMs: Long) {
         val player = mediaSession?.player ?: return
-        if (!playerPreferences.showSubtitleAfterRewind) return
+        if (!playerPreferences.showOnSkipBack) return
 
         val tracks = player.currentTracks
         val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
@@ -1140,10 +1141,11 @@ class PlayerService : MediaSessionService() {
         // Save expected parameters after the switch for change detection
         expectedTrackSelectionParameters = player.trackSelectionParameters
 
-        // Schedule revert: restore the snapshot after SUBTITLE_REWIND_MAX_MS
+        // Schedule revert: restore the snapshot after min(rewindDelta, SUBTITLE_REWIND_MAX_MS)
+        val showDurationMs = minOf(rewindDeltaMs, SUBTITLE_REWIND_MAX_MS)
         subtitleOnRewindJob?.cancel()
         subtitleOnRewindJob = serviceScope.launch {
-            delay(SUBTITLE_REWIND_MAX_MS)
+            delay(showDurationMs)
             restoreSubtitleSnapshot()
         }
     }
