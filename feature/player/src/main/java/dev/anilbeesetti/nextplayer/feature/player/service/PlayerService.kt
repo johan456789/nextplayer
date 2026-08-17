@@ -356,15 +356,15 @@ class PlayerService : MediaSessionService() {
             val currentMediaItem = player.currentMediaItem ?: return
 
             // If the subtitle-on-rewind feature is active, suppress persistence
-            // and check if user manually changed (cancel if so)
+            // for programmatic changes, but allow persistence for user changes
             if (isSubtitleOnRewindActive) {
                 val expected = expectedTrackSelectionParameters
-                if (expected != null && parameters != expected) {
-                    // Not our programmatic change — user manually changed subtitle
-                    cancelSubtitleOnRewind()
+                if (expected == null || parameters == expected) {
+                    // Programmatic change from our feature — suppress persistence
+                    return
                 }
-                // Skip persistence while auto-managed
-                return
+                // User manually changed — cancel auto-revert, fall through to persist
+                cancelSubtitleOnRewind()
             }
 
             val audioTrackIndex = player.getManuallySelectedTrackIndex(C.TRACK_TYPE_AUDIO)
@@ -1131,12 +1131,14 @@ class PlayerService : MediaSessionService() {
             0
         }
 
+        // Set flags BEFORE switchTrack — the callback fires synchronously
+        isSubtitleOnRewindActive = true
+
         // Enable the subtitle track
         player.switchTrack(C.TRACK_TYPE_TEXT, targetIndex)
 
         // Save expected parameters after the switch for change detection
         expectedTrackSelectionParameters = player.trackSelectionParameters
-        isSubtitleOnRewindActive = true
 
         // Schedule revert: restore the snapshot after SUBTITLE_REWIND_MAX_MS
         subtitleOnRewindJob?.cancel()
