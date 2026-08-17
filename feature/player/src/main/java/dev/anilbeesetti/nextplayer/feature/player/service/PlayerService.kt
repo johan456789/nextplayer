@@ -95,6 +95,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
@@ -132,6 +133,7 @@ class PlayerService : MediaSessionService() {
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private var currentVolumeGain: Int = 0
+    private var subtitleOnRewindJob: Job? = null
 
     private lateinit var decoderManager: DecoderManager
     private lateinit var trackSelector: DefaultTrackSelector
@@ -225,6 +227,7 @@ class PlayerService : MediaSessionService() {
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
             restoreDecoderChoices(mediaItem = mediaItem)
             isMediaItemReady = false
+            subtitleOnRewindJob?.cancel()
             loadArtworkForCurrentMediaItem()
             mediaItem?.mediaMetadata?.let { metadata ->
                 mediaSession?.player?.run {
@@ -253,6 +256,14 @@ class PlayerService : MediaSessionService() {
                 reason,
             )
             val oldMediaItem = oldPosition.mediaItem ?: return
+
+            // Detect same-media-item rewind for subtitle-after-rewind feature
+            if (reason == DISCONTINUITY_REASON_SEEK &&
+                oldMediaItem == newPosition.mediaItem &&
+                newPosition.positionMs < oldPosition.positionMs
+            ) {
+                handleSubtitleOnRewind()
+            }
 
             when (reason) {
                 DISCONTINUITY_REASON_SEEK,
@@ -1052,6 +1063,7 @@ class PlayerService : MediaSessionService() {
         cancelPendingMediaItems()
         super.onDestroy()
         artworkLoadJob?.cancel()
+        subtitleOnRewindJob?.cancel()
         loudnessEnhancer?.release()
         loudnessEnhancer = null
         mediaSession?.run {
@@ -1069,6 +1081,44 @@ class PlayerService : MediaSessionService() {
     }
 
     private fun Long.validDurationOrNull(): Long? = takeIf { it != C.TIME_UNSET && it >= 0 }
+
+    private fun handleSubtitleOnRewind() {
+        val player = mediaSession?.player ?: return
+        if (!playerPreferences.showSubtitleAfterRewind) return
+
+        val tracks = player.currentTracks
+        val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
+        if (textGroups.isEmpty()) return
+
+        // Skip if a text track is already selected (nothing to do)
+        val currentSubtitleIndex = player.getManuallySelectedTrackIndex(C.TRACK_TYPE_TEXT)
+        if (currentSubtitleIndex != null && currentSubtitleIndex >= 0) return
+
+        // Find the preferred subtitle track index within text groups
+        val preferredLanguage = playerPreferences.preferredSubtitleLanguage
+        val targetIndex = if (preferredLanguage.isNotEmpty()) {
+            textGroups.indexOfFirst { trackGroup ->
+                (0 until trackGroup.length).any { i ->
+                    trackGroup.getTrackFormat(i).language == preferredLanguage
+                }
+            }.takeIf { it >= 0 } ?: 0
+        } else {
+            0
+        }
+
+        // Enable the subtitle track
+        player.switchTrack(C.TRACK_TYPE_TEXT, targetIndex)
+
+        // Schedule revert after min(rewindDelta, SUBTITLE_REWIND_MAX_MS)
+        // We use a fixed window since we don't have the exact delta here;
+        // the max cap handles large rewinds.
+        subtitleOnRewindJob?.cancel()
+        subtitleOnRewindJob = serviceScope.launch {
+            delay(SUBTITLE_REWIND_MAX_MS)
+            // Restore: disable the subtitle track we enabled
+            player.switchTrack(C.TRACK_TYPE_TEXT, -1)
+        }
+    }
 
     private suspend fun updatedMediaItemsWithMetadata(
         mediaItems: List<MediaItem>,
@@ -1449,3 +1499,5 @@ private val REMOTE_SCHEMES = setOf(
     "https",
     "rtsp",
 )
+
+private const val SUBTITLE_REWIND_MAX_MS = 30_000L

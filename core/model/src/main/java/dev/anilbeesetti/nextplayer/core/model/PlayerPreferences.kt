@@ -62,6 +62,7 @@ data class PlayerPreferences(
     val applyEmbeddedStyles: Boolean = true,
     // Vertical distance from the default subtitle spot, as a fraction of the player height.
     val subtitleOffsetY: Float = 0f,
+    val showSubtitleAfterRewind: Boolean = false,
 ) {
 
     companion object {

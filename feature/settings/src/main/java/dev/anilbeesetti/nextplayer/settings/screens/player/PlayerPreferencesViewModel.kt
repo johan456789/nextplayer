@@ -82,6 +82,9 @@ class PlayerPreferencesViewModel(
 
             is PlayerPreferencesUiEvent.ToggleUseMaterialYouControls ->
                 toggleUseMaterialYouControls()
+
+            is PlayerPreferencesUiEvent.ToggleShowSubtitleAfterRewind ->
+                toggleShowSubtitleAfterRewind()
         }
     }
 
@@ -182,6 +185,14 @@ class PlayerPreferencesViewModel(
             }
         }
     }
+
+    private fun toggleShowSubtitleAfterRewind() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(showSubtitleAfterRewind = !it.showSubtitleAfterRewind)
+            }
+        }
+    }
 }
 
 @Stable
@@ -214,4 +225,5 @@ sealed interface PlayerPreferencesUiEvent {
     data class UpdateDefaultPlaybackSpeed(val value: Float) : PlayerPreferencesUiEvent
     data class UpdateControlAutoHideTimeout(val value: Int) : PlayerPreferencesUiEvent
     data object ToggleUseMaterialYouControls : PlayerPreferencesUiEvent
+    data object ToggleShowSubtitleAfterRewind : PlayerPreferencesUiEvent
 }
