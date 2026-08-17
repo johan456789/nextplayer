@@ -93,9 +93,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
@@ -134,6 +134,8 @@ class PlayerService : MediaSessionService() {
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private var currentVolumeGain: Int = 0
     private var subtitleOnRewindJob: Job? = null
+    private var snapshotTrackSelectionParameters: TrackSelectionParameters? = null
+    private var isSubtitleOnRewindActive = false
 
     private lateinit var decoderManager: DecoderManager
     private lateinit var trackSelector: DefaultTrackSelector
@@ -227,7 +229,7 @@ class PlayerService : MediaSessionService() {
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
             restoreDecoderChoices(mediaItem = mediaItem)
             isMediaItemReady = false
-            subtitleOnRewindJob?.cancel()
+            cancelSubtitleOnRewind()
             loadArtworkForCurrentMediaItem()
             mediaItem?.mediaMetadata?.let { metadata ->
                 mediaSession?.player?.run {
@@ -352,6 +354,18 @@ class PlayerService : MediaSessionService() {
             val player = mediaSession?.player ?: return
             val currentMediaItem = player.currentMediaItem ?: return
 
+            // If the subtitle-on-rewind feature is active, suppress persistence
+            // and check if user manually changed (cancel if so)
+            if (isSubtitleOnRewindActive) {
+                val snapshot = snapshotTrackSelectionParameters
+                if (snapshot != null && parameters != snapshot) {
+                    // User manually changed subtitle selection — cancel the auto-revert
+                    cancelSubtitleOnRewind()
+                }
+                // Skip persistence while auto-managed
+                return
+            }
+
             val audioTrackIndex = player.getManuallySelectedTrackIndex(C.TRACK_TYPE_AUDIO)
             val subtitleTrackIndex = player.getManuallySelectedTrackIndex(C.TRACK_TYPE_TEXT)
 
@@ -392,6 +406,7 @@ class PlayerService : MediaSessionService() {
                         player?.mediaItemCount == 0
                     )
             if (shouldResetTrackSelectionParameters) {
+                cancelSubtitleOnRewind()
                 mediaSession?.player?.trackSelectionParameters = TrackSelectionParameters.DEFAULT
             }
         }
@@ -1087,19 +1102,27 @@ class PlayerService : MediaSessionService() {
         if (!playerPreferences.showSubtitleAfterRewind) return
 
         val tracks = player.currentTracks
-        val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
+        val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
         if (textGroups.isEmpty()) return
 
         // Skip if a text track is already selected (nothing to do)
-        val currentSubtitleIndex = player.getManuallySelectedTrackIndex(C.TRACK_TYPE_TEXT)
-        if (currentSubtitleIndex != null && currentSubtitleIndex >= 0) return
+        val hasSelectedTextTrack = textGroups.any { group ->
+            (0 until group.length).any { i -> group.isTrackSelected(i) }
+        }
+        if (hasSelectedTextTrack) return
 
-        // Find the preferred subtitle track index within text groups
+        // Snapshot current parameters so we can restore exactly later
+        snapshotTrackSelectionParameters = player.trackSelectionParameters
+        isSubtitleOnRewindActive = true
+
+        // Find the preferred subtitle track index within supported text groups
         val preferredLanguage = playerPreferences.preferredSubtitleLanguage
         val targetIndex = if (preferredLanguage.isNotEmpty()) {
+            val normalizedPreferred = preferredLanguage.lowercase()
             textGroups.indexOfFirst { trackGroup ->
                 (0 until trackGroup.length).any { i ->
-                    trackGroup.getTrackFormat(i).language == preferredLanguage
+                    val lang = trackGroup.getTrackFormat(i).language?.lowercase()
+                    lang == normalizedPreferred || lang?.startsWith(normalizedPreferred) == true
                 }
             }.takeIf { it >= 0 } ?: 0
         } else {
@@ -1109,15 +1132,28 @@ class PlayerService : MediaSessionService() {
         // Enable the subtitle track
         player.switchTrack(C.TRACK_TYPE_TEXT, targetIndex)
 
-        // Schedule revert after min(rewindDelta, SUBTITLE_REWIND_MAX_MS)
-        // We use a fixed window since we don't have the exact delta here;
-        // the max cap handles large rewinds.
+        // Schedule revert: restore the snapshot after SUBTITLE_REWIND_MAX_MS
         subtitleOnRewindJob?.cancel()
         subtitleOnRewindJob = serviceScope.launch {
             delay(SUBTITLE_REWIND_MAX_MS)
-            // Restore: disable the subtitle track we enabled
-            player.switchTrack(C.TRACK_TYPE_TEXT, -1)
+            restoreSubtitleSnapshot()
         }
+    }
+
+    private fun restoreSubtitleSnapshot() {
+        val player = mediaSession?.player ?: return
+        val snapshot = snapshotTrackSelectionParameters ?: return
+        snapshotTrackSelectionParameters = null
+        isSubtitleOnRewindActive = false
+        subtitleOnRewindJob = null
+        player.trackSelectionParameters = snapshot
+    }
+
+    private fun cancelSubtitleOnRewind() {
+        subtitleOnRewindJob?.cancel()
+        subtitleOnRewindJob = null
+        snapshotTrackSelectionParameters = null
+        isSubtitleOnRewindActive = false
     }
 
     private suspend fun updatedMediaItemsWithMetadata(
