@@ -19,7 +19,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,8 +55,6 @@ fun BoxScope.SubtitleSelectorView(
     modifier: Modifier = Modifier,
     show: Boolean,
     player: Player,
-    showSubtitleAfterRewind: Boolean = false,
-    onShowSubtitleAfterRewindChange: (Boolean) -> Unit = {},
     onSelectSubtitleClick: () -> Unit,
     onEvent: (SubtitleOptionsEvent) -> Unit = {},
     onDismiss: () -> Unit,
@@ -70,7 +67,6 @@ fun BoxScope.SubtitleSelectorView(
         player = player,
         onEvent = onEvent,
     )
-    val hasSelectedTrack = subtitleTracksState.tracks.any { it.isSelected }
 
     OverlayView(
         modifier = modifier,
@@ -105,22 +101,6 @@ fun BoxScope.SubtitleSelectorView(
                     onDismiss()
                 },
             )
-            if (hasSelectedTrack) {
-                Spacer(modifier = Modifier.size(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.show_subtitle_after_rewind),
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = showSubtitleAfterRewind,
-                        onCheckedChange = onShowSubtitleAfterRewindChange,
-                    )
-                }
-            }
             Spacer(modifier = Modifier.size(16.dp))
             FilledTonalButton(
                 modifier = Modifier.fillMaxWidth(),

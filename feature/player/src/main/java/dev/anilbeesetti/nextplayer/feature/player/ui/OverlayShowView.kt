@@ -22,8 +22,6 @@ fun BoxScope.OverlayShowView(
     chapters: List<Chapter>,
     currentChapterIndex: Int,
     onChapterSelected: (Chapter) -> Unit,
-    showSubtitleAfterRewind: Boolean = false,
-    onShowSubtitleAfterRewindChange: (Boolean) -> Unit = {},
     onDismiss: () -> Unit = {},
     onVideoDecoderModeSelected: (DecoderMode) -> Unit = {},
     onAudioDecoderModeSelected: (DecoderMode) -> Unit = {},
@@ -62,8 +60,6 @@ fun BoxScope.OverlayShowView(
     SubtitleSelectorView(
         show = overlayView == OverlayView.SUBTITLE_SELECTOR,
         player = player,
-        showSubtitleAfterRewind = showSubtitleAfterRewind,
-        onShowSubtitleAfterRewindChange = onShowSubtitleAfterRewindChange,
         onSelectSubtitleClick = onSelectSubtitleClick,
         onEvent = onSubtitleOptionEvent,
         onDismiss = onDismiss,
