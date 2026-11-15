@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main, myfork]
+    tags: ['v*']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    permissions:
+      contents: write # the template's release job publishes a GitHub Release on v* tags
+    uses: johan456789/ci-templates/.github/workflows/app-android.yml@v1
+    with:
+      gradle_task: assembleRelease
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
