@@ -28,7 +28,7 @@ Use these intent fields:
 | --- | --- |
 | Action | `Intent.ACTION_VIEW` (`android.intent.action.VIEW`) |
 | Data | The media `Uri` to start playing |
-| Package | `dev.anilbeesetti.nextplayer`; debug builds use `dev.anilbeesetti.nextplayer.debug` |
+| Package | `com.thyu.nextplayer`; debug builds use `com.thyu.nextplayer.debug` |
 | Activity | `dev.anilbeesetti.nextplayer.feature.player.PlayerActivity` |
 | MIME type | An appropriate type such as `video/mp4`, `video/*`, or `application/vnd.apple.mpegurl` |
 
@@ -65,7 +65,7 @@ Launch the request from that Activity or Fragment:
 ```kotlin
 val intent = Intent(Intent.ACTION_VIEW).apply {
     setClassName(
-        "dev.anilbeesetti.nextplayer",
+        "com.thyu.nextplayer",
         "dev.anilbeesetti.nextplayer.feature.player.PlayerActivity",
     )
     setDataAndType(videoUri, "video/mp4")
@@ -95,7 +95,7 @@ for Android's package visibility rules. Add this inside the caller's manifest:
 
 ```xml
 <queries>
-    <package android:name="dev.anilbeesetti.nextplayer" />
+    <package android:name="com.thyu.nextplayer" />
 </queries>
 ```
 
