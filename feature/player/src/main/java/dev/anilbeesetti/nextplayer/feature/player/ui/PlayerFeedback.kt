@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -121,6 +123,7 @@ internal fun BoxScope.PlayerGestureIndicators(tapGestureState: TapGestureState) 
 
     AnimatedVisibility(
         modifier = Modifier
+            .windowInsetsPadding(WindowInsets.statusBars)
             .padding(top = 24.dp)
             .align(Alignment.TopCenter),
         visible = tapGestureState.isLongPressGestureInAction,

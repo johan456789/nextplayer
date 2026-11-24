@@ -4,7 +4,10 @@ import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
@@ -25,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import dev.anilbeesetti.nextplayer.core.ui.R
+import dev.anilbeesetti.nextplayer.core.ui.components.thenIf
 import dev.anilbeesetti.nextplayer.core.ui.theme.NextPlayerTheme
 import dev.anilbeesetti.nextplayer.feature.player.state.ControlsVisibilityState
 import dev.anilbeesetti.nextplayer.feature.player.state.PlayerOrientationEffect
@@ -184,6 +188,10 @@ internal fun MediaPlayerContent(
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (pictureInPictureState != null) {
             PlayerContentFrame(
+                // The status bar stays visible in split-screen, so keep the video out from under it.
+                modifier = Modifier.thenIf(condition = isInMultiWindowMode) {
+                    windowInsetsPadding(WindowInsets.statusBars)
+                },
                 player = player,
                 pictureInPictureState = pictureInPictureState,
                 videoZoomAndContentScaleState = videoZoomAndContentScaleState,
