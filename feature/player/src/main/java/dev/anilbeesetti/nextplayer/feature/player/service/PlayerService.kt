@@ -137,6 +137,7 @@ class PlayerService : MediaSessionService() {
     private var snapshotTrackSelectionParameters: TrackSelectionParameters? = null
     private var expectedTrackSelectionParameters: TrackSelectionParameters? = null
     private var isSubtitleOnRewindActive = false
+    private var subtitleOnRewindEndPositionMs = C.TIME_UNSET
 
     private lateinit var decoderManager: DecoderManager
     private lateinit var trackSelector: DefaultTrackSelector
@@ -265,8 +266,10 @@ class PlayerService : MediaSessionService() {
                 oldMediaItem == newPosition.mediaItem &&
                 newPosition.positionMs < oldPosition.positionMs
             ) {
-                val rewindDeltaMs = oldPosition.positionMs - newPosition.positionMs
-                handleSubtitleOnRewind(rewindDeltaMs)
+                handleSubtitleOnRewind(
+                    fromPositionMs = oldPosition.positionMs,
+                    toPositionMs = newPosition.positionMs,
+                )
             }
 
             when (reason) {
@@ -1099,9 +1102,19 @@ class PlayerService : MediaSessionService() {
 
     private fun Long.validDurationOrNull(): Long? = takeIf { it != C.TIME_UNSET && it >= 0 }
 
-    private fun handleSubtitleOnRewind(rewindDeltaMs: Long) {
+    private fun handleSubtitleOnRewind(fromPositionMs: Long, toPositionMs: Long) {
         val player = mediaSession?.player ?: return
         if (!playerPreferences.showOnSkipBack) return
+
+        // Another skip back while the subtitle is shown extends the window from the new spot
+        if (isSubtitleOnRewindActive) {
+            subtitleOnRewindEndPositionMs = subtitleOnRewindEndPositionMs(
+                fromPositionMs = fromPositionMs,
+                toPositionMs = toPositionMs,
+                currentEndPositionMs = subtitleOnRewindEndPositionMs,
+            )
+            return
+        }
 
         val tracks = player.currentTracks
         val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
@@ -1136,16 +1149,25 @@ class PlayerService : MediaSessionService() {
         isSubtitleOnRewindActive = true
 
         // Enable the subtitle track
-        player.switchTrack(C.TRACK_TYPE_TEXT, targetIndex)
+        player.switchTrack(
+            C.TRACK_TYPE_TEXT,
+            targetIndex,
+        )
 
         // Save expected parameters after the switch for change detection
         expectedTrackSelectionParameters = player.trackSelectionParameters
 
-        // Schedule revert: restore the snapshot after min(rewindDelta, SUBTITLE_REWIND_MAX_MS)
-        val showDurationMs = minOf(rewindDeltaMs, SUBTITLE_REWIND_MAX_MS)
+        // Restore the snapshot once playback catches back up to the end position.
+        // Tracking position (not time) keeps the subtitle up while paused or buffering.
+        subtitleOnRewindEndPositionMs = subtitleOnRewindEndPositionMs(
+            fromPositionMs = fromPositionMs,
+            toPositionMs = toPositionMs,
+        )
         subtitleOnRewindJob?.cancel()
         subtitleOnRewindJob = serviceScope.launch {
-            delay(showDurationMs)
+            while (player.currentPosition < subtitleOnRewindEndPositionMs) {
+                delay(SUBTITLE_REWIND_POLL_INTERVAL_MS)
+            }
             restoreSubtitleSnapshot()
         }
     }
@@ -1156,6 +1178,7 @@ class PlayerService : MediaSessionService() {
         snapshotTrackSelectionParameters = null
         expectedTrackSelectionParameters = null
         isSubtitleOnRewindActive = false
+        subtitleOnRewindEndPositionMs = C.TIME_UNSET
         subtitleOnRewindJob = null
 
         val player = mediaSession?.player ?: return
@@ -1169,6 +1192,7 @@ class PlayerService : MediaSessionService() {
         snapshotTrackSelectionParameters = null
         expectedTrackSelectionParameters = null
         isSubtitleOnRewindActive = false
+        subtitleOnRewindEndPositionMs = C.TIME_UNSET
     }
 
     private suspend fun updatedMediaItemsWithMetadata(
@@ -1552,3 +1576,21 @@ private val REMOTE_SCHEMES = setOf(
 )
 
 private const val SUBTITLE_REWIND_MAX_MS = 30_000L
+private const val SUBTITLE_REWIND_POLL_INTERVAL_MS = 200L
+
+/**
+ * Position at which a subtitle shown on skip back hides again: where playback was before
+ * the skip back, capped at [SUBTITLE_REWIND_MAX_MS] past the landing spot. A skip back while
+ * the subtitle is already shown keeps the later of the new and [currentEndPositionMs].
+ */
+internal fun subtitleOnRewindEndPositionMs(
+    fromPositionMs: Long,
+    toPositionMs: Long,
+    currentEndPositionMs: Long = C.TIME_UNSET,
+): Long = minOf(
+    maxOf(
+        fromPositionMs,
+        currentEndPositionMs,
+    ),
+    toPositionMs + SUBTITLE_REWIND_MAX_MS,
+)
