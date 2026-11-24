@@ -37,6 +37,7 @@ fun PlayerOrientationEffect(
     player: Player,
     screenOrientation: ScreenOrientation,
     orientationOverride: Int? = null,
+    isInMultiWindowMode: Boolean = false,
 ) {
     val activity = LocalActivity.current ?: return
     LaunchedEffect(
@@ -44,7 +45,13 @@ fun PlayerOrientationEffect(
         player,
         screenOrientation,
         orientationOverride,
+        isInMultiWindowMode,
     ) {
+        if (isInMultiWindowMode) {
+            // A fixed orientation makes the system letterbox the player inside its split-screen pane.
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            return@LaunchedEffect
+        }
         if (orientationOverride != null) {
             activity.requestedOrientation = if (orientationOverride == 99999) {
                 activity.videoBasedOrientation(player)

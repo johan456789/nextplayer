@@ -32,6 +32,7 @@ import dev.anilbeesetti.nextplayer.feature.player.state.rememberBrightnessState
 import dev.anilbeesetti.nextplayer.feature.player.state.rememberControlsVisibilityState
 import dev.anilbeesetti.nextplayer.feature.player.state.rememberCuesState
 import dev.anilbeesetti.nextplayer.feature.player.state.rememberErrorState
+import dev.anilbeesetti.nextplayer.feature.player.state.rememberIsInMultiWindowMode
 import dev.anilbeesetti.nextplayer.feature.player.state.rememberPictureInPictureState
 import dev.anilbeesetti.nextplayer.feature.player.state.rememberSeekGestureState
 import dev.anilbeesetti.nextplayer.feature.player.state.rememberSubtitlePositionState
@@ -131,11 +132,13 @@ internal fun MediaPlayerContent(
     } else {
         null
     }
+    val isInMultiWindowMode = rememberIsInMultiWindowMode()
     if (!isPreview) {
         PlayerOrientationEffect(
             player = player,
             screenOrientation = playerPreferences.playerScreenOrientation,
             orientationOverride = api?.orientation,
+            isInMultiWindowMode = isInMultiWindowMode,
         )
     }
     val errorState = rememberErrorState(player = player)

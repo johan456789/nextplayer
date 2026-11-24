@@ -121,6 +121,47 @@ class RotateButtonTest {
         }
     }
 
+    @Test
+    fun multiWindowModeReleasesFixedOrientationAndRestoresItAfterwards() {
+        val player = composeRule.runOnIdle { TestPlayer() }
+        val isInMultiWindowMode = mutableStateOf(value = false)
+        try {
+            composeRule.runOnIdle {
+                composeRule.activity.requestedOrientation =
+                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
+            composeRule.setContent {
+                PlayerOrientationEffect(
+                    player = player,
+                    screenOrientation = ScreenOrientation.LANDSCAPE_AUTO,
+                    isInMultiWindowMode = isInMultiWindowMode.value,
+                )
+            }
+            composeRule.runOnIdle {
+                assertEquals(
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+                    composeRule.activity.requestedOrientation,
+                )
+                isInMultiWindowMode.value = true
+            }
+            composeRule.runOnIdle {
+                assertEquals(
+                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+                    composeRule.activity.requestedOrientation,
+                )
+                isInMultiWindowMode.value = false
+            }
+            composeRule.runOnIdle {
+                assertEquals(
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+                    composeRule.activity.requestedOrientation,
+                )
+            }
+        } finally {
+            composeRule.runOnIdle { player.release() }
+        }
+    }
+
     private class TestPlayer : SimpleBasePlayer(Looper.getMainLooper()) {
         private var state = State.Builder()
             .setAvailableCommands(Player.Commands.EMPTY)
