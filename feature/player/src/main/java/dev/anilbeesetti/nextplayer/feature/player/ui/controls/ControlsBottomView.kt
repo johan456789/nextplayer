@@ -116,44 +116,14 @@ fun ControlsBottomView(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    PlayerButton(
+                    PlayerTimeButton(
+                        progressState = progressState,
+                        showRemainingTime = showRemainingTime,
+                        onClick = onToggleTimeDisplay,
                         modifier = Modifier.focusRequester(
                             focusRequester = timeButtonFocusRequester,
                         ),
-                        onClick = onToggleTimeDisplay,
-                        containerColor = PlayerButtonBlackAlpha,
-                        contentPadding = PaddingValues(
-                            horizontal = 8.dp,
-                            vertical = 1.dp,
-                        ),
-                    ) {
-                        val timeTextPositionMs by remember(progressState) {
-                            derivedStateOf {
-                                val wholeSeconds =
-                                    progressState.currentPositionMs / MILLISECONDS_PER_SECOND
-                                wholeSeconds * MILLISECONDS_PER_SECOND
-                            }
-                        }
-                        Text(
-                            text = buildString {
-                                val positionText = when (showRemainingTime) {
-                                    true -> if (progressState.durationMs != C.TIME_UNSET) {
-                                        val remainingMs =
-                                            timeTextPositionMs - progressState.durationMs
-                                        getStringForTime(remainingMs)
-                                    } else {
-                                        getStringForTime(C.TIME_UNSET)
-                                    }
-
-                                    false -> getStringForTime(timeTextPositionMs)
-                                }
-                                append(positionText)
-                                append(" / ")
-                                append(getStringForTime(progressState.durationMs))
-                            },
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    }
+                    )
 
                     if (chaptersState.chapters.isNotEmpty()) {
                         PlayerButton(
@@ -271,6 +241,52 @@ fun ControlsBottomView(
                 }
             }
         }
+    }
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+internal fun PlayerTimeButton(
+    progressState: ProgressStateWithTickInterval,
+    showRemainingTime: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PlayerButton(
+        modifier = modifier,
+        onClick = onClick,
+        containerColor = PlayerButtonBlackAlpha,
+        contentPadding = PaddingValues(
+            horizontal = 8.dp,
+            vertical = 1.dp,
+        ),
+    ) {
+        val timeTextPositionMs by remember(progressState) {
+            derivedStateOf {
+                val wholeSeconds =
+                    progressState.currentPositionMs / MILLISECONDS_PER_SECOND
+                wholeSeconds * MILLISECONDS_PER_SECOND
+            }
+        }
+        Text(
+            text = buildString {
+                val positionText = when (showRemainingTime) {
+                    true -> if (progressState.durationMs != C.TIME_UNSET) {
+                        val remainingMs =
+                            timeTextPositionMs - progressState.durationMs
+                        getStringForTime(remainingMs)
+                    } else {
+                        getStringForTime(C.TIME_UNSET)
+                    }
+
+                    false -> getStringForTime(timeTextPositionMs)
+                }
+                append(positionText)
+                append(" / ")
+                append(getStringForTime(progressState.durationMs))
+            },
+            style = MaterialTheme.typography.labelLarge,
+        )
     }
 }
 

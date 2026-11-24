@@ -4,7 +4,7 @@ import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.state.ProgressStateWithTickInterval
@@ -26,10 +27,15 @@ import dev.anilbeesetti.nextplayer.feature.player.state.seekAmountFormatted
 import dev.anilbeesetti.nextplayer.feature.player.state.seekToPositionFormated
 import dev.anilbeesetti.nextplayer.feature.player.ui.InfoView
 import dev.anilbeesetti.nextplayer.feature.player.ui.OverlayView
+import dev.anilbeesetti.nextplayer.feature.player.ui.controls.CompactControlsBottomView
+import dev.anilbeesetti.nextplayer.feature.player.ui.controls.CompactControlsTopView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsBottomView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsMiddleView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsTopView
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.DecoderMode
+
+/** Split-screen panes shorter than this only get playback basics instead of the full controls. */
+private val CompactControlsMaxHeight = 480.dp
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -44,6 +50,7 @@ fun PlayerControls(
     progressState: ProgressStateWithTickInterval,
     chaptersState: ChaptersState,
     isPipSupported: Boolean,
+    isInMultiWindowMode: Boolean,
     onShowOverlay: (OverlayView) -> Unit,
     onBackClick: () -> Unit,
     onPlayInBackgroundClick: () -> Unit,
@@ -52,25 +59,30 @@ fun PlayerControls(
     modifier: Modifier = Modifier,
     middleControlsModifier: Modifier = Modifier,
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
+        val useCompactControls = isInMultiWindowMode && maxHeight < CompactControlsMaxHeight
         Column {
             AnimatedVisibility(
                 visible = controlsVisibilityState.controlsVisible,
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                ControlsTopView(
-                    title = title,
-                    videoDecoderMode = videoDecoderMode,
-                    onDecoderClick = { onShowOverlay(OverlayView.DECODER_SELECTOR) },
-                    onAudioClick = { onShowOverlay(OverlayView.AUDIO_SELECTOR) },
-                    onSubtitleClick = { onShowOverlay(OverlayView.SUBTITLE_SELECTOR) },
-                    onPlaylistClick = { onShowOverlay(OverlayView.PLAYLIST) },
-                    onBackClick = onBackClick,
-                )
+                if (useCompactControls) {
+                    CompactControlsTopView(title = title)
+                } else {
+                    ControlsTopView(
+                        title = title,
+                        videoDecoderMode = videoDecoderMode,
+                        onDecoderClick = { onShowOverlay(OverlayView.DECODER_SELECTOR) },
+                        onAudioClick = { onShowOverlay(OverlayView.AUDIO_SELECTOR) },
+                        onSubtitleClick = { onShowOverlay(OverlayView.SUBTITLE_SELECTOR) },
+                        onPlaylistClick = { onShowOverlay(OverlayView.PLAYLIST) },
+                        onBackClick = onBackClick,
+                    )
+                }
             }
             Spacer(modifier = Modifier.weight(weight = 1f))
             AnimatedVisibility(
@@ -80,36 +92,47 @@ fun PlayerControls(
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                ControlsBottomView(
-                    player = player,
-                    progressState = progressState,
-                    chaptersState = chaptersState,
-                    onChaptersClick = { onShowOverlay(OverlayView.CHAPTERS) },
-                    controlsAlignment = when (playerPreferences.controlButtonsPosition) {
-                        ControlButtonsPosition.LEFT -> Alignment.Start
-                        ControlButtonsPosition.RIGHT -> Alignment.End
-                    },
-                    videoContentScale = videoZoomAndContentScaleState.videoContentScale,
-                    isPipSupported = isPipSupported,
-                    showRemainingTime = playerPreferences.showRemainingTime,
-                    onToggleTimeDisplay = onToggleTimeDisplay,
-                    onSeek = seekGestureState::onSeek,
-                    onSeekEnd = seekGestureState::onSeekEnd,
-                    onPlaybackSpeedClick = { onShowOverlay(OverlayView.PLAYBACK_SPEED) },
-                    onPlayInBackgroundClick = onPlayInBackgroundClick,
-                    onLockControlsClick = {
-                        controlsVisibilityState.showControls()
-                        controlsVisibilityState.lockControls()
-                    },
-                    onVideoContentScaleClick = {
-                        controlsVisibilityState.showControls()
-                        videoZoomAndContentScaleState.switchToNextVideoContentScale()
-                    },
-                    onVideoContentScaleLongClick = {
-                        onShowOverlay(OverlayView.VIDEO_CONTENT_SCALE)
-                    },
-                    onPictureInPictureClick = onPictureInPictureClick,
-                )
+                if (useCompactControls) {
+                    CompactControlsBottomView(
+                        progressState = progressState,
+                        chaptersState = chaptersState,
+                        showRemainingTime = playerPreferences.showRemainingTime,
+                        onToggleTimeDisplay = onToggleTimeDisplay,
+                        onSeek = seekGestureState::onSeek,
+                        onSeekEnd = seekGestureState::onSeekEnd,
+                    )
+                } else {
+                    ControlsBottomView(
+                        player = player,
+                        progressState = progressState,
+                        chaptersState = chaptersState,
+                        onChaptersClick = { onShowOverlay(OverlayView.CHAPTERS) },
+                        controlsAlignment = when (playerPreferences.controlButtonsPosition) {
+                            ControlButtonsPosition.LEFT -> Alignment.Start
+                            ControlButtonsPosition.RIGHT -> Alignment.End
+                        },
+                        videoContentScale = videoZoomAndContentScaleState.videoContentScale,
+                        isPipSupported = isPipSupported,
+                        showRemainingTime = playerPreferences.showRemainingTime,
+                        onToggleTimeDisplay = onToggleTimeDisplay,
+                        onSeek = seekGestureState::onSeek,
+                        onSeekEnd = seekGestureState::onSeekEnd,
+                        onPlaybackSpeedClick = { onShowOverlay(OverlayView.PLAYBACK_SPEED) },
+                        onPlayInBackgroundClick = onPlayInBackgroundClick,
+                        onLockControlsClick = {
+                            controlsVisibilityState.showControls()
+                            controlsVisibilityState.lockControls()
+                        },
+                        onVideoContentScaleClick = {
+                            controlsVisibilityState.showControls()
+                            videoZoomAndContentScaleState.switchToNextVideoContentScale()
+                        },
+                        onVideoContentScaleLongClick = {
+                            onShowOverlay(OverlayView.VIDEO_CONTENT_SCALE)
+                        },
+                        onPictureInPictureClick = onPictureInPictureClick,
+                    )
+                }
             }
         }
         when {

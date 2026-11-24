@@ -59,6 +59,7 @@ internal fun MediaPlayerControls(
     onPictureInPictureClick: () -> Unit,
     modifier: Modifier = Modifier,
     dpadUpDown: Int? = null,
+    isInMultiWindowMode: Boolean = false,
 ) {
     val playerPreferences = state.playerPreferences
     val metadataState = rememberMetadataState(player = player)
@@ -169,6 +170,7 @@ internal fun MediaPlayerControls(
                     progressState = progressState,
                     chaptersState = chaptersState,
                     isPipSupported = isPipSupported,
+                    isInMultiWindowMode = isInMultiWindowMode,
                     onShowOverlay = ::showOverlay,
                     onBackClick = { onAction(PlayerAction.NavigateUp) },
                     onPlayInBackgroundClick = { onAction(PlayerAction.PlayInBackground) },

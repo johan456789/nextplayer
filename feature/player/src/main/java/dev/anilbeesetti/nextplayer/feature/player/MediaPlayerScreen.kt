@@ -226,6 +226,7 @@ internal fun MediaPlayerContent(
             seekGestureState = seekGestureState,
             videoZoomAndContentScaleState = videoZoomAndContentScaleState,
             dpadUpDown = api?.dpadUpDown,
+            isInMultiWindowMode = isInMultiWindowMode,
             isPipSupported = pictureInPictureState?.isPipSupported == true,
             onPictureInPictureClick = {
                 pictureInPictureState?.let {
