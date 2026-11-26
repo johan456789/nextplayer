@@ -4,10 +4,14 @@ import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,6 +22,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.state.ProgressStateWithTickInterval
 import dev.anilbeesetti.nextplayer.core.model.ControlButtonsPosition
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
+import dev.anilbeesetti.nextplayer.core.ui.components.thenIf
 import dev.anilbeesetti.nextplayer.feature.player.extensions.nameRes
 import dev.anilbeesetti.nextplayer.feature.player.state.ChaptersState
 import dev.anilbeesetti.nextplayer.feature.player.state.ControlsVisibilityState
@@ -135,25 +140,37 @@ fun PlayerControls(
                 }
             }
         }
-        when {
-            seekGestureState.seekAmount != null -> InfoView(
-                info =
-                    "${seekGestureState.seekAmountFormatted}\n" +
-                        "[${seekGestureState.seekToPositionFormated}]",
-            )
+        // Center on the video frame, which sits below the status bar in split-screen.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .thenIf(condition = isInMultiWindowMode) {
+                    windowInsetsPadding(WindowInsets.statusBars)
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            when {
+                seekGestureState.seekAmount != null -> InfoView(
+                    info =
+                        "${seekGestureState.seekAmountFormatted}\n" +
+                            "[${seekGestureState.seekToPositionFormated}]",
+                )
 
-            videoZoomAndContentScaleState.isZooming -> InfoView(
-                info = "${(videoZoomAndContentScaleState.zoom * 100).toInt()}%",
-            )
+                videoZoomAndContentScaleState.isZooming -> InfoView(
+                    info = "${(videoZoomAndContentScaleState.zoom * 100).toInt()}%",
+                )
 
-            videoZoomAndContentScaleState.showContentScaleIndicator -> InfoView(
-                info = stringResource(videoZoomAndContentScaleState.videoContentScale.nameRes()),
-            )
+                videoZoomAndContentScaleState.showContentScaleIndicator -> InfoView(
+                    info = stringResource(
+                        videoZoomAndContentScaleState.videoContentScale.nameRes(),
+                    ),
+                )
 
-            controlsVisibilityState.controlsVisible -> ControlsMiddleView(
-                player = player,
-                modifier = middleControlsModifier,
-            )
+                controlsVisibilityState.controlsVisible -> ControlsMiddleView(
+                    player = player,
+                    modifier = middleControlsModifier,
+                )
+            }
         }
     }
 }
