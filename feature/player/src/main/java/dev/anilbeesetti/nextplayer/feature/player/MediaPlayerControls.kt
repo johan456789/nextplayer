@@ -4,8 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -140,6 +143,10 @@ internal fun MediaPlayerControls(
                 CircularProgressIndicator(
                     Modifier
                         .align(Alignment.Center)
+                        // Match the video frame, which sits below the status bar in split-screen.
+                        .thenIf(condition = isInMultiWindowMode) {
+                            windowInsetsPadding(WindowInsets.statusBars)
+                        }
                         .size(72.dp),
                 )
             }
